@@ -22,7 +22,7 @@ WORKDIR /app
 
 COPY --from=builder /app/weather-exporter .
 
-USER 1000
+USER app
 
 EXPOSE 8080
 
