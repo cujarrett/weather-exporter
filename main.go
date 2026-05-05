@@ -48,7 +48,7 @@ type exporter struct {
 
 func (e *exporter) fetchPrecipitation() (float64, error) {
 	url := fmt.Sprintf(
-		"%s?latitude=%s&longitude=%s&hourly=precipitation&timezone=%s&forecast_days=1&past_days=0",
+		"%s?latitude=%s&longitude=%s&hourly=precipitation&timezone=%s&forecast_days=1&past_days=1",
 		openMeteoURL, e.lat, e.lon, e.timezone,
 	)
 
@@ -72,7 +72,7 @@ func (e *exporter) fetchPrecipitation() (float64, error) {
 		return 0, fmt.Errorf("load location %q: %w", e.timezone, err)
 	}
 
-	currentHour := time.Now().In(loc).Format("2006-01-02T15:00")
+	currentHour := time.Now().In(loc).Add(-1 * time.Hour).Truncate(time.Hour).Format("2006-01-02T15:00")
 	for i, t := range data.Hourly.Time {
 		if t == currentHour {
 			return data.Hourly.Precipitation[i], nil
