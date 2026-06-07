@@ -1,2 +1,2 @@
 # weather-exporter
-Prometheus exporter that polls Open-Meteo for local precipitation data and exposes it as a gauge metric
+Prometheus exporter that polls Open-Meteo for local weather data and exposes precipitation and temperature as gauge metrics
