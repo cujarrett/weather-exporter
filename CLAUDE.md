@@ -6,11 +6,11 @@
 
 ### Pre-commit safety check
 
-Before telling the user to commit, always run `/security-review`. It reviews the pending changes on the current branch for security issues. Once it confirms the changes are safe, offer the user a suggested commit message — do not run `git commit` yourself.
+Before telling the user to commit, always run `/security-review`. It reviews the pending changes on the current branch for security issues. Once it confirms the changes are safe, offer the user a suggested commit message - do not run `git commit` yourself.
 
 ## Philosophy: Grug-Brained Development
 
-> "Complexity very, very bad." — [grugbrain.dev](https://grugbrain.dev/)
+> "Complexity very, very bad." - [grugbrain.dev](https://grugbrain.dev/)
 
 - **Say no.** The best weapon against complexity is the word "no". No new feature, no new abstraction, until it earns its place.
 - **No abstraction until a pattern repeats three times.** Let cut points emerge naturally from the code; don't invent them up front.
@@ -38,19 +38,19 @@ weather_precipitation_mm{latitude="40.5142",longitude="-88.9906"} 2.4
 |---|---|---|
 | `LATITUDE` | `40.5142` | Latitude for Open-Meteo query |
 | `LONGITUDE` | `-88.9906` | Longitude for Open-Meteo query |
-| `TIMEZONE` | `America/Chicago` | IANA timezone — used to match current hour in API response |
+| `TIMEZONE` | `America/Chicago` | IANA timezone - used to match current hour in API response |
 | `PORT` | `8080` | HTTP port for `/metrics` and `/healthz` |
 
 ### Endpoints
 
-- `GET /metrics` — Prometheus metrics
-- `GET /healthz` — Liveness/readiness probe, always 200
+- `GET /metrics` - Prometheus metrics
+- `GET /healthz` - Liveness/readiness probe, always 200
 
 ## Architecture
 
-- Single `main.go` — no packages, no layers. It's a tiny exporter.
+- Single `main.go` - no packages, no layers. It's a tiny exporter.
 - Polls Open-Meteo every 10 minutes. The API response includes hourly forecasts; the exporter finds the current hour's value.
-- Uses `time/tzdata` embedded timezone database — no OS timezone files needed in the distroless image.
+- Uses `time/tzdata` embedded timezone database - no OS timezone files needed in the distroless image.
 
 ## Build & Run
 
@@ -68,10 +68,10 @@ docker build --platform linux/arm64 -t weather-exporter .
 
 This service is deployed via the homelab `XApi` Crossplane composition. See the [homelab repo](https://github.com/cujarrett/homelab) for the XApi instance manifest and ServiceMonitor.
 
-### XApi — what it provisions
-- **Deployment** — runs this container
-- **Service** — ClusterIP on port 80 → container port 8080
-- **Ingress** *(optional)* — Traefik `websecure` with cert-manager TLS
+### XApi - what it provisions
+- **Deployment** - runs this container
+- **Service** - ClusterIP on port 80 → container port 8080
+- **Ingress** *(optional)* - Traefik `websecure` with cert-manager TLS
 
 ### XApi instance example (homelab `platform/xrs/api/`)
 
@@ -90,4 +90,4 @@ spec:
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `go test ./...` and `go vet ./...` on every push and PR. On merge to `main` it builds and pushes `ghcr.io/cujarrett/weather-exporter:main` and `ghcr.io/cujarrett/weather-exporter:sha-<sha>`. Only `linux/arm64` — all homelab nodes are Raspberry Pi 5 (ARM64).
+GitHub Actions (`.github/workflows/ci.yml`) runs `go test ./...` and `go vet ./...` on every push and PR. On merge to `main` it builds and pushes `ghcr.io/cujarrett/weather-exporter:main` and `ghcr.io/cujarrett/weather-exporter:sha-<sha>`. Only `linux/arm64` - all homelab nodes are Raspberry Pi 5 (ARM64).
