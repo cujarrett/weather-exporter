@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 	_ "time/tzdata"
 
@@ -65,7 +69,7 @@ func (e *exporter) fetch() (precip, temp float64, err error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("http get: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, 0, fmt.Errorf("unexpected status %d", resp.StatusCode)
@@ -81,7 +85,12 @@ func (e *exporter) fetch() (precip, temp float64, err error) {
 		return 0, 0, fmt.Errorf("load location %q: %w", e.timezone, err)
 	}
 
-	currentHour := time.Now().In(loc).Add(-1 * time.Hour).Truncate(time.Hour).Format("2006-01-02T15:00")
+	return currentReading(data, time.Now().In(loc))
+}
+
+// currentReading picks the last completed hour from the hourly series.
+func currentReading(data openMeteoResponse, now time.Time) (precip, temp float64, err error) {
+	currentHour := now.Add(-1 * time.Hour).Truncate(time.Hour).Format("2006-01-02T15:00")
 	for i, t := range data.Hourly.Time {
 		if t == currentHour {
 			return data.Hourly.Precipitation[i], data.Hourly.Temperature[i], nil
@@ -89,6 +98,10 @@ func (e *exporter) fetch() (precip, temp float64, err error) {
 	}
 
 	return 0, 0, fmt.Errorf("current hour %q not found in response", currentHour)
+}
+
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func (e *exporter) update() {
@@ -137,13 +150,27 @@ func main() {
 
 	go exp.run()
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/healthz", healthHandler)
+	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 
-	log.Printf("starting weather-exporter on :%s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatal(err)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Printf("starting weather-exporter on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutting down")
+	// Kubernetes sends SIGKILL after 30s, so finish draining well before that.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
 	}
 }
