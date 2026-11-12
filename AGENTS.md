@@ -24,7 +24,7 @@ Before telling the user to commit, always run `/security-review`. It reviews the
 
 ## Project Overview
 
-A Prometheus exporter written in Go. Polls [Open-Meteo](https://open-meteo.com/) for local precipitation data and exposes it as a gauge metric. Designed to run as a Kubernetes workload via the homelab `XApi` platform primitive.
+A Prometheus exporter written in Go. It polls [Open-Meteo](https://open-meteo.com/) for local precipitation and exposes it as a gauge. It runs as an `Api` on the homelab platform.
 
 ### Metric
 
@@ -40,56 +40,32 @@ weather_precipitation_mm{latitude="40.5142",longitude="-88.9906"} 2.4
 |---|---|---|
 | `LATITUDE` | `40.5142` | Latitude for Open-Meteo query |
 | `LONGITUDE` | `-88.9906` | Longitude for Open-Meteo query |
-| `TIMEZONE` | `America/Chicago` | IANA timezone - used to match current hour in API response |
+| `TIMEZONE` | `America/Chicago` | IANA timezone, used to match the current hour in the API response |
 | `PORT` | `8080` | HTTP port for `/metrics` and `/healthz` |
 
 ### Endpoints
 
-- `GET /metrics` - Prometheus metrics
-- `GET /healthz` - Liveness/readiness probe, always 200
+- `GET /metrics`: Prometheus metrics
+- `GET /healthz`: liveness and readiness probe, always 200
 
 ## Architecture
 
-- Single `main.go` - no packages, no layers. It's a tiny exporter.
-- Polls Open-Meteo every 10 minutes. The API response includes hourly forecasts; the exporter finds the current hour's value.
-- Uses `time/tzdata` embedded timezone database - no OS timezone files needed in the distroless image.
+- Single `main.go`, with no packages and no layers.
+- Polls Open-Meteo every 10 minutes. The response holds hourly forecasts, and the exporter picks the current hour's value.
+- Embeds the `time/tzdata` timezone database, so the distroless image needs no OS timezone files.
 
 ## Build & Run
 
-```bash
-go build -o weather-exporter .
-./weather-exporter
-```
+`just ci` runs lint, test and build. `just run` starts it locally. `just --list` shows every recipe.
 
-Docker (ARM64 for Raspberry Pi 5 nodes):
-```bash
-docker build --platform linux/arm64 -t weather-exporter .
-```
+## Deployment
 
-## Deployment on the Homelab
-
-This service is deployed via the homelab `XApi` Crossplane composition. See the [homelab repo](https://github.com/cujarrett/homelab) for the XApi instance manifest and ServiceMonitor.
-
-### XApi - what it provisions
-- **Deployment** - runs this container
-- **Service** - ClusterIP on port 80 → container port 8080
-- **Ingress** *(optional)* - Traefik `websecure` with cert-manager TLS
-
-### XApi instance example (homelab `platform/xrs/api/`)
-
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XApi
-metadata:
-  name: weather-exporter
-spec:
-  parameters:
-    namespace: weather-exporter
-    image: ghcr.io/cujarrett/weather-exporter:latest
-    port: 8080
-    environment: test
-```
+The `Api` lives at `sump-pump/weather-exporter.yaml` in [homelab-workspaces](https://github.com/cujarrett/homelab-workspaces). ArgoCD deploys from there.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `go test ./...` and `go vet ./...` on every push and PR. On merge to `main` it builds and pushes `ghcr.io/cujarrett/weather-exporter:main` and `ghcr.io/cujarrett/weather-exporter:sha-<sha>`. Only `linux/arm64` - all homelab nodes are Raspberry Pi 5 (ARM64).
+`.github/workflows/ci.yml` has three jobs.
+
+- `test`: `go test ./...` and `go vet ./...` on every push and PR.
+- `build-and-push`: on `main`, builds `linux/arm64` and pushes `ghcr.io/cujarrett/weather-exporter:main` and `:sha-<sha>`.
+- `deploy`: commits the new tag to `homelab-workspaces`.
