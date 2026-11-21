@@ -3,7 +3,7 @@ Prometheus exporter that polls Open-Meteo for local weather data and exposes pre
 
 ## Deployment
 
-CI builds an ARM64 image, pushes it to GHCR, then commits the new tag to the `sump-pump` workspace in [homelab-workspaces](https://github.com/cujarrett/homelab-workspaces). ArgoCD deploys from there.
+CI builds an ARM64 image, pushes it to GHCR, then commits the new tag to the `weather-exporter` workspace in [homelab-workspaces](https://github.com/cujarrett/homelab-workspaces). ArgoCD deploys from there.
 
 ### Rotating `HOMELAB_WORKSPACES_APP_KEY`
 

@@ -60,7 +60,7 @@ weather_precipitation_mm{latitude="40.5142",longitude="-88.9906"} 2.4
 
 ## Deployment
 
-The `Api` lives at `sump-pump/weather-exporter.yaml` in [homelab-workspaces](https://github.com/cujarrett/homelab-workspaces). ArgoCD deploys from there.
+The `Api` lives at `weather-exporter/weather-exporter.yaml` in [homelab-workspaces](https://github.com/cujarrett/homelab-workspaces). ArgoCD deploys from there.
 
 ## CI
 
